@@ -1,11 +1,17 @@
-import { configureStore } from '@reduxjs/toolkit';
-import { authReducer } from '../../entities/user/model';
+import { create } from 'zustand';
 
-export const store = configureStore({
-  reducer: {
-    auth: authReducer,
-  },
-});
+interface LoadingState {
+  isLoading: boolean;
+  error: string | null;
+  setLoading: (loading: boolean) => void;
+  setError: (error: string | null) => void;
+  reset: () => void;
+}
 
-export type RootState = ReturnType<typeof store.getState>;
-export type AppDispatch = typeof store.dispatch;
+export const useLoadingStore = create<LoadingState>((set) => ({
+  isLoading: false,
+  error: null,
+  setLoading: (loading) => set({ isLoading: loading }),
+  setError: (error) => set({ error }),
+  reset: () => set({ isLoading: false, error: null }),
+}));

@@ -1,1 +1,1 @@
-export { SearchWidget } from './search-widget';
+export { SearchWidget } from './ui/search-widget';

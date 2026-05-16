@@ -1,32 +1,27 @@
 export interface User {
-  id?: number;
-  username: string;
-  role?: string;
+  id: number;
+  email: string;
+  name?: string;
 }
 
-export interface LoginRequest {
-  username: string;
+export interface LoginCredentials {
+  email: string;
   password: string;
 }
 
-export interface RegisterRequest {
-  username: string;
+export interface RegisterCredentials {
+  email: string;
   password: string;
-  role?: string;
+  name?: string;
 }
 
-export interface LoginResponse {
+export interface AuthResponse {
   access_token: string;
-  token_type: string;
+  refresh_token: string;
+  user: User;
 }
 
-export interface RegisterResponse {
-  message: string;
-  username: string;
-}
-
-export interface AuthState {
-  user: User | null;
-  isAuthenticated: boolean;
-  isLoading: boolean;
+export interface TokenResponse {
+  access_token: string;
+  refresh_token: string;
 }

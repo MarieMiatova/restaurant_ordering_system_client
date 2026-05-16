@@ -85,7 +85,7 @@ export function CatalogPage() {
       <ProductList 
         items={menuItems} 
         isLoading={productsLoading}
-        onProductClick={(id) => console.log('Product clicked:', id)}
+        onProductClick={(id: number) => console.log('Product clicked:', id)}
       />
     </div>
   );

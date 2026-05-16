@@ -2,19 +2,10 @@
 # Dependencies
 node_modules/
 
-# Build outputs
+# Build artifacts
 dist/
 build/
 target/
-
-# Environment variables
-.env
-.env.local
-*.env.*
-
-# IDE specific
-.vscode/
-.idea/
 
 # Python cache
 __pycache__/
@@ -22,30 +13,43 @@ __pycache__/
 *.pyo
 *.pyd
 
-# Logs
-*.log
+# Environment variables
+.env
+.env.local
+*.env.*
 
-# Temporary files
-*.tmp
+# IDE files
+.vscode/
+.idea/
 *.swp
 *.swo
 
-# Coverage reports
+# Logs
+*.log
+
+# Coverage
 coverage/
 htmlcov/
 .coverage
 
-# Distribution / packaging
-*.tar.gz
-*.whl
-*.egg
-*.egg-info/
+# Temporary files
+*.tmp
 
-# OS generated files
+# OS specific
 .DS_Store
 Thumbs.db
 
-# Testing
-.nyc_output/
-coverage.xml
+# Package manager
+package-lock.json
+yarn.lock
+
+# Compiled files
+*.class
+*.o
+*.obj
+*.exe
+*.dll
+*.so
+*.a
+*.out
 ```

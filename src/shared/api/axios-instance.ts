@@ -14,12 +14,20 @@ export const apiClient = axios.create({
   },
 });
 
-// Request interceptor to add auth token
 apiClient.interceptors.request.use(
   (config) => {
-    const token = typeof window !== 'undefined' ? localStorage.getItem('auth_access_token') : null;
-    if (token && config.headers) {
-      config.headers.Authorization = `Bearer ${token}`;
+    // Get token from localStorage or Zustand store
+    const authStorage = localStorage.getItem('auth-storage');
+    if (authStorage) {
+      try {
+        const parsed = JSON.parse(authStorage);
+        const token = parsed.state?.accessToken;
+        if (token) {
+          config.headers.Authorization = `Bearer ${token}`;
+        }
+      } catch (e) {
+        console.error('Failed to parse auth storage:', e);
+      }
     }
     return config;
   },
@@ -28,20 +36,17 @@ apiClient.interceptors.request.use(
   }
 );
 
-// Response interceptor for error handling
 apiClient.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response?.status === 401) {
-      // Token expired or invalid - clear storage and redirect to login
-      if (typeof window !== 'undefined') {
-        localStorage.removeItem('auth_access_token');
-        window.location.href = '/login';
-      }
-    } else if (error.response?.status === 404) {
+    if (error.response?.status === 404) {
       console.error('Resource not found');
     } else if (error.response?.status >= 500) {
       console.error('Server error occurred');
+    } else if (error.response?.status === 401) {
+      // Clear auth on 401
+      localStorage.removeItem('auth-storage');
+      window.dispatchEvent(new Event('auth-invalid'));
     }
     return Promise.reject(error);
   }
