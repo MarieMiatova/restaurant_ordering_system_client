@@ -68,6 +68,16 @@ export function CartPage() {
     fetchMenuItems();
   }, [items]);
 
+  const handleRemoveItem = useCallback(async (itemId: number) => {
+    try {
+      await removeItem(itemId);
+      showToast('Item removed from cart', 'success');
+    } catch (error) {
+      console.error('Failed to remove item:', error);
+      showToast('Failed to remove item', 'error');
+    }
+  }, [removeItem]);
+
   const handleUpdateQuantity = useCallback(async (itemId: number, newQuantity: number) => {
     if (newQuantity <= 0) {
       await handleRemoveItem(itemId);
@@ -80,17 +90,7 @@ export function CartPage() {
       console.error('Failed to update quantity:', error);
       showToast('Failed to update quantity', 'error');
     }
-  }, [updateQuantity]);
-
-  const handleRemoveItem = useCallback(async (itemId: number) => {
-    try {
-      await removeItem(itemId);
-      showToast('Item removed from cart', 'success');
-    } catch (error) {
-      console.error('Failed to remove item:', error);
-      showToast('Failed to remove item', 'error');
-    }
-  }, [removeItem]);
+  }, [updateQuantity, handleRemoveItem]);
 
   const handleClearCart = useCallback(async () => {
     if (!window.confirm('Are you sure you want to clear your cart?')) {
@@ -114,7 +114,7 @@ export function CartPage() {
       return;
     }
 
-    if (cartItemsWithDetails.length === 0) {
+    if (items.length === 0) {
       showToast('Your cart is empty', 'error');
       return;
     }
@@ -136,7 +136,8 @@ export function CartPage() {
       });
 
       if (!response.ok) {
-        throw new Error('Failed to create order');
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || `Failed to create order: ${response.status}`);
       }
 
       await clearCart();
@@ -146,12 +147,13 @@ export function CartPage() {
       showToast('Order placed successfully!', 'success');
       navigate('/orders');
     } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to place order';
       console.error('Failed to place order:', error);
-      showToast('Failed to place order', 'error');
+      showToast(errorMessage, 'error');
     } finally {
       setIsProcessing(false);
     }
-  }, [customerName, phone, address, cartItemsWithDetails.length, accessToken, clearCart, navigate]);
+  }, [customerName, phone, address, items.length, accessToken, clearCart, navigate]);
 
   const calculatedTotal = useMemo(() => {
     return cartItemsWithDetails.reduce((sum, item) => {
@@ -274,7 +276,6 @@ export function CartPage() {
                       <button
                         onClick={() => handleUpdateQuantity(cartItem.id, cartItem.quantity - 1)}
                         className="w-8 h-8 rounded-lg bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 flex items-center justify-center transition-colors"
-                        disabled={isProcessing}
                       >
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 12H4" />
@@ -286,7 +287,6 @@ export function CartPage() {
                       <button
                         onClick={() => handleUpdateQuantity(cartItem.id, cartItem.quantity + 1)}
                         className="w-8 h-8 rounded-lg bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 flex items-center justify-center transition-colors"
-                        disabled={isProcessing}
                       >
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -296,7 +296,6 @@ export function CartPage() {
                     <button
                       onClick={() => handleRemoveItem(cartItem.id)}
                       className="text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 text-sm font-medium transition-colors"
-                      disabled={isProcessing}
                     >
                       Remove
                     </button>
@@ -330,7 +329,6 @@ export function CartPage() {
             <button
               onClick={handleClearCart}
               className="w-full mb-4 py-2 px-4 border border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg font-medium transition-colors"
-              disabled={isProcessing}
             >
               Clear Cart
             </button>
@@ -354,7 +352,6 @@ export function CartPage() {
                   onChange={(e) => setCustomerName(e.target.value)}
                   className="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                   placeholder="John Doe"
-                  disabled={isProcessing}
                 />
               </div>
 
@@ -369,7 +366,6 @@ export function CartPage() {
                   onChange={(e) => setPhone(e.target.value)}
                   className="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                   placeholder="+1234567890"
-                  disabled={isProcessing}
                 />
               </div>
 
@@ -384,13 +380,12 @@ export function CartPage() {
                   rows={3}
                   className="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                   placeholder="123 Main St, City, State 12345"
-                  disabled={isProcessing}
                 />
               </div>
 
               <button
                 onClick={handleCheckout}
-                disabled={isProcessing || cartItemsWithDetails.length === 0}
+                disabled={isProcessing || items.length === 0}
                 className="w-full py-3 px-4 bg-purple-600 hover:bg-purple-700 disabled:bg-purple-400 text-white rounded-lg font-semibold transition-colors flex items-center justify-center gap-2"
               >
                 {isProcessing ? (
