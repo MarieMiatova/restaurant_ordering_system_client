@@ -76,7 +76,6 @@ export function CartPage() {
     }
     try {
       await removeItem(itemId);
-      showToast('Item removed from cart', 'success');
     } catch (error) {
       console.error('Failed to remove item:', error);
       showToast('Failed to remove item', 'error');
@@ -113,7 +112,6 @@ export function CartPage() {
     ));
     try {
       await updateQuantity(itemId, newQuantity);
-      showToast('Cart updated', 'success');
     } catch (error) {
       console.error('Failed to update quantity:', error);
       showToast('Failed to update quantity', 'error');
@@ -182,9 +180,16 @@ export function CartPage() {
         }),
       });
 
+      let errorData: Record<string, unknown> = {};
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.message || `Failed to create order: ${response.status}`);
+        // Try to parse error response, but don't fail if it's not JSON
+        try {
+          errorData = await response.json();
+        } catch {
+          // If response is not JSON, use status text
+        }
+        const errorMessage = (errorData.message as string) || (errorData.detail as string) || `Failed to create order: ${response.status} ${response.statusText}`;
+        throw new Error(errorMessage);
       }
 
       await clearCart();

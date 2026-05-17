@@ -61,9 +61,8 @@ export function FavoritesPage() {
   }, [favorites]);
 
   const handleRemoveFavorite = useCallback(async (menuItemId: number) => {
-    // Optimistic update - remove from state immediately without skeleton
+    // Optimistic update - remove from state immediately without skeleton or toast
     removeFavoriteFromState(menuItemId);
-    showToast('Removed from favorites', 'success');
   }, [removeFavoriteFromState]);
 
   const handleAddToCart = useCallback(async (item: FavoriteItemWithDetails) => {
