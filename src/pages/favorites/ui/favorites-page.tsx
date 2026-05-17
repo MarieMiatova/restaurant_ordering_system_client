@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useFavoriteStore } from '@entities/favorite/model/favorite-store';
 import { useAuthStore } from '@entities/user/model/auth-store';
@@ -14,6 +14,7 @@ export function FavoritesPage() {
   const addItem = useCartStore((state) => state.addItem);
   const [favoriteItems, setFavoriteItems] = useState<MenuItem[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [isFetchingDetails, setIsFetchingDetails] = useState(false);
 
   useEffect(() => {
     if (!isAuthenticated) {
@@ -21,9 +22,9 @@ export function FavoritesPage() {
       return;
     }
     loadFavorites();
-  }, [isAuthenticated, navigate, loadFavorites]);
+  }, [isAuthenticated, navigate]);
 
-  // Fetch menu item details for each favorite
+  // Fetch menu item details for each favorite - memoized to prevent re-fetching
   useEffect(() => {
     const fetchFavoriteItems = async () => {
       if (favorites.length === 0) {
@@ -31,6 +32,7 @@ export function FavoritesPage() {
         return;
       }
 
+      setIsFetchingDetails(true);
       try {
         const items = await Promise.all(
           favorites.map(async (menuItemId) => {
@@ -45,13 +47,15 @@ export function FavoritesPage() {
         setFavoriteItems(items.filter((item): item is MenuItem => item !== null));
       } catch (error) {
         console.error('Failed to fetch favorite items:', error);
+      } finally {
+        setIsFetchingDetails(false);
       }
     };
 
     fetchFavoriteItems();
   }, [favorites]);
 
-  const handleToggleFavorite = async (menuItemId: number) => {
+  const handleToggleFavorite = useCallback(async (menuItemId: number) => {
     setIsProcessing(true);
     try {
       const wasAdded = await toggleFavorite(menuItemId);
@@ -62,9 +66,9 @@ export function FavoritesPage() {
     } finally {
       setIsProcessing(false);
     }
-  };
+  }, [toggleFavorite]);
 
-  const handleAddToCart = async (item: MenuItem) => {
+  const handleAddToCart = useCallback(async (item: MenuItem) => {
     try {
       await addItem({ menu_item_id: item.id, quantity: 1 });
       showToast('Added to cart!', 'success');
@@ -72,7 +76,10 @@ export function FavoritesPage() {
       console.error('Failed to add to cart:', error);
       showToast('Failed to add to cart', 'error');
     }
-  };
+  }, [addItem]);
+
+  const isLoadingState = isLoading || isFetchingDetails;
+  const favoritesCount = favorites.length;
 
   if (!isAuthenticated) {
     return null;
@@ -85,11 +92,11 @@ export function FavoritesPage() {
           My Favorites
         </h1>
         <p className="text-gray-600 dark:text-gray-400">
-          {favorites.length} {favorites.length === 1 ? 'item' : 'items'} in your favorites
+          {favoritesCount} {favoritesCount === 1 ? 'item' : 'items'} in your favorites
         </p>
       </div>
 
-      {isLoading ? (
+      {isLoadingState ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
           {Array.from({ length: 8 }).map((_, i) => (
             <div

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useCartStore } from '@entities/cart/model/cart-store';
 import { useAuthStore } from '@entities/user/model/auth-store';
@@ -17,9 +17,11 @@ interface CartItemWithDetails {
 export function CartPage() {
   const navigate = useNavigate();
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+  const accessToken = useAuthStore((state) => state.accessToken);
   const { items, isLoading, loadCart, removeItem, updateQuantity, clearCart, getTotalItems } = useCartStore();
   const [cartItemsWithDetails, setCartItemsWithDetails] = useState<CartItemWithDetails[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [isFetchingDetails, setIsFetchingDetails] = useState(false);
 
   // Form state for order
   const [customerName, setCustomerName] = useState('');
@@ -32,9 +34,9 @@ export function CartPage() {
       return;
     }
     loadCart();
-  }, [isAuthenticated, navigate, loadCart]);
+  }, [isAuthenticated, navigate]);
 
-  // Fetch menu item details for each cart item
+  // Fetch menu item details for each cart item - memoized to prevent re-fetching
   useEffect(() => {
     const fetchMenuItems = async () => {
       if (items.length === 0) {
@@ -42,6 +44,7 @@ export function CartPage() {
         return;
       }
 
+      setIsFetchingDetails(true);
       try {
         const itemsWithDetails = await Promise.all(
           items.map(async (cartItem) => {
@@ -57,13 +60,15 @@ export function CartPage() {
         setCartItemsWithDetails(itemsWithDetails);
       } catch (error) {
         console.error('Failed to fetch menu items:', error);
+      } finally {
+        setIsFetchingDetails(false);
       }
     };
 
     fetchMenuItems();
   }, [items]);
 
-  const handleUpdateQuantity = async (itemId: number, newQuantity: number) => {
+  const handleUpdateQuantity = useCallback(async (itemId: number, newQuantity: number) => {
     if (newQuantity <= 0) {
       await handleRemoveItem(itemId);
       return;
@@ -75,9 +80,9 @@ export function CartPage() {
       console.error('Failed to update quantity:', error);
       showToast('Failed to update quantity', 'error');
     }
-  };
+  }, [updateQuantity]);
 
-  const handleRemoveItem = async (itemId: number) => {
+  const handleRemoveItem = useCallback(async (itemId: number) => {
     try {
       await removeItem(itemId);
       showToast('Item removed from cart', 'success');
@@ -85,22 +90,25 @@ export function CartPage() {
       console.error('Failed to remove item:', error);
       showToast('Failed to remove item', 'error');
     }
-  };
+  }, [removeItem]);
 
-  const handleClearCart = async () => {
+  const handleClearCart = useCallback(async () => {
     if (!window.confirm('Are you sure you want to clear your cart?')) {
       return;
     }
     try {
       await clearCart();
+      setCustomerName('');
+      setPhone('');
+      setAddress('');
       showToast('Cart cleared', 'success');
     } catch (error) {
       console.error('Failed to clear cart:', error);
       showToast('Failed to clear cart', 'error');
     }
-  };
+  }, [clearCart]);
 
-  const handleCheckout = async () => {
+  const handleCheckout = useCallback(async () => {
     if (!customerName.trim() || !phone.trim() || !address.trim()) {
       showToast('Please fill in all delivery details', 'error');
       return;
@@ -113,30 +121,17 @@ export function CartPage() {
 
     setIsProcessing(true);
     try {
-      // For authenticated users, we should use the /orders/from-cart endpoint
-      // But since we need to pass customer details, we'll create the order manually
-      const orderData = {
-        customer_name: customerName.trim(),
-        phone: phone.trim(),
-        address: address.trim(),
-        items: items.map((item) => ({
-          menu_item_id: item.menu_item_id,
-          quantity: item.quantity,
-        })),
-      };
-
-      // Use the from-cart endpoint for authenticated users
       const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/orders/from-cart`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${useAuthStore.getState().accessToken}`,
+          Authorization: `Bearer ${accessToken}`,
         },
         body: JSON.stringify({
-          customer_name: orderData.customer_name,
-          phone: orderData.phone,
-          address: orderData.address,
-          items: [], // Ignored by API, items taken from cart
+          customer_name: customerName.trim(),
+          phone: phone.trim(),
+          address: address.trim(),
+          items: [],
         }),
       });
 
@@ -145,6 +140,9 @@ export function CartPage() {
       }
 
       await clearCart();
+      setCustomerName('');
+      setPhone('');
+      setAddress('');
       showToast('Order placed successfully!', 'success');
       navigate('/orders');
     } catch (error) {
@@ -153,15 +151,21 @@ export function CartPage() {
     } finally {
       setIsProcessing(false);
     }
-  };
+  }, [customerName, phone, address, cartItemsWithDetails.length, accessToken, clearCart, navigate]);
 
-  const calculatedTotal = cartItemsWithDetails.reduce((sum, item) => {
-    return sum + (item.menuItem?.price || 0) * item.quantity;
-  }, 0);
+  const calculatedTotal = useMemo(() => {
+    return cartItemsWithDetails.reduce((sum, item) => {
+      return sum + (item.menuItem?.price || 0) * item.quantity;
+    }, 0);
+  }, [cartItemsWithDetails]);
+
+  const totalItems = useMemo(() => getTotalItems(), [getTotalItems]);
 
   if (!isAuthenticated) {
     return null;
   }
+
+  const isLoadingState = isLoading || isFetchingDetails;
 
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -170,11 +174,11 @@ export function CartPage() {
           Shopping Cart
         </h1>
         <p className="text-gray-600 dark:text-gray-400">
-          {getTotalItems()} {getTotalItems() === 1 ? 'item' : 'items'} in your cart
+          {totalItems} {totalItems === 1 ? 'item' : 'items'} in your cart
         </p>
       </div>
 
-      {isLoading ? (
+      {isLoadingState ? (
         <div className="space-y-4">
           {Array.from({ length: 3 }).map((_, i) => (
             <div
