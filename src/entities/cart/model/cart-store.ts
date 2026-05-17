@@ -5,6 +5,7 @@ import type { CartItem } from './types';
 interface CartState {
   items: CartItem[];
   isLoading: boolean;
+  isInitialized: boolean;
   loadCart: () => Promise<void>;
   addItem: (item: { menu_item_id: number; quantity?: number }) => Promise<void>;
   removeItem: (itemId: number) => Promise<void>;
@@ -18,15 +19,16 @@ interface CartState {
 export const useCartStore = create<CartState>((set, get) => ({
   items: [],
   isLoading: false,
+  isInitialized: false,
 
   loadCart: async () => {
     set({ isLoading: true });
     try {
       const items = await cartApi.getCart();
-      set({ items, isLoading: false });
+      set({ items, isLoading: false, isInitialized: true });
     } catch (error) {
       console.error('Failed to load cart:', error);
-      set({ isLoading: false, items: [] });
+      set({ isLoading: false, isInitialized: true, items: [] });
     }
   },
 

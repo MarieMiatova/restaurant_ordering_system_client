@@ -4,6 +4,7 @@ import { favoriteApi } from '../api/favorite-api';
 interface FavoriteState {
   favorites: number[]; // store menu_item_ids for quick lookup
   isLoading: boolean;
+  isInitialized: boolean;
   loadFavorites: () => Promise<void>;
   toggleFavorite: (menuItemId: number) => Promise<boolean>; // returns true if added, false if removed
   isFavorite: (menuItemId: number) => boolean;
@@ -13,6 +14,7 @@ interface FavoriteState {
 export const useFavoriteStore = create<FavoriteState>((set, get) => ({
   favorites: [],
   isLoading: false,
+  isInitialized: false,
 
   loadFavorites: async () => {
     set({ isLoading: true });
@@ -21,10 +23,11 @@ export const useFavoriteStore = create<FavoriteState>((set, get) => ({
       set({
         favorites: favorites.map((f) => f.menu_item_id),
         isLoading: false,
+        isInitialized: true,
       });
     } catch (error) {
       console.error('Failed to load favorites:', error);
-      set({ isLoading: false });
+      set({ isLoading: false, isInitialized: true });
       throw error;
     }
   },

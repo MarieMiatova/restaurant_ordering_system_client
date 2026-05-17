@@ -10,7 +10,7 @@ import { showToast } from '@shared/lib/toast';
 export function FavoritesPage() {
   const navigate = useNavigate();
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
-  const { favorites, isLoading, loadFavorites, toggleFavorite } = useFavoriteStore();
+  const { favorites, isLoading, toggleFavorite } = useFavoriteStore();
   const addItem = useCartStore((state) => state.addItem);
   const [favoriteItems, setFavoriteItems] = useState<MenuItem[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -21,7 +21,7 @@ export function FavoritesPage() {
       navigate('/login');
       return;
     }
-    loadFavorites();
+    // Favorites are already loaded globally in App.tsx, no need to reload
   }, [isAuthenticated, navigate]);
 
   // Fetch menu item details for each favorite - memoized to prevent re-fetching

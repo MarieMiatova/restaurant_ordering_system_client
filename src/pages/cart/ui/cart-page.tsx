@@ -18,7 +18,7 @@ export function CartPage() {
   const navigate = useNavigate();
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
   const accessToken = useAuthStore((state) => state.accessToken);
-  const { items, isLoading, loadCart, removeItem, updateQuantity, clearCart, getTotalItems } = useCartStore();
+  const { items, isLoading, removeItem, updateQuantity, clearCart, getTotalItems } = useCartStore();
   const [cartItemsWithDetails, setCartItemsWithDetails] = useState<CartItemWithDetails[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
   const [isFetchingDetails, setIsFetchingDetails] = useState(false);
@@ -33,7 +33,7 @@ export function CartPage() {
       navigate('/login');
       return;
     }
-    loadCart();
+    // Cart is already loaded globally in App.tsx, no need to reload
   }, [isAuthenticated, navigate]);
 
   // Fetch menu item details for each cart item - memoized to prevent re-fetching

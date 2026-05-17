@@ -8,10 +8,12 @@ interface AuthState {
   accessToken: string | null;
   isAuthenticated: boolean;
   isLoading: boolean;
+  isInitialized: boolean;
   login: (credentials: LoginCredentials) => Promise<void>;
   register: (credentials: RegisterCredentials) => Promise<void>;
   logout: () => void;
   clearAuth: () => void;
+  initialize: () => void;
 }
 
 export const useAuthStore = create<AuthState>()(
@@ -21,6 +23,11 @@ export const useAuthStore = create<AuthState>()(
       accessToken: null,
       isAuthenticated: false,
       isLoading: true,
+      isInitialized: false,
+
+      initialize: () => {
+        set({ isLoading: false, isInitialized: true });
+      },
 
       login: async (credentials) => {
         try {
@@ -29,9 +36,10 @@ export const useAuthStore = create<AuthState>()(
             accessToken: response.access_token,
             isAuthenticated: true,
             isLoading: false,
+            isInitialized: true,
           });
         } catch (error) {
-          set({ isLoading: false });
+          set({ isLoading: false, isInitialized: true });
           throw error;
         }
       },
@@ -44,9 +52,10 @@ export const useAuthStore = create<AuthState>()(
             accessToken: tokenResponse.access_token,
             isAuthenticated: true,
             isLoading: false,
+            isInitialized: true,
           });
         } catch (error) {
-          set({ isLoading: false });
+          set({ isLoading: false, isInitialized: true });
           throw error;
         }
       },
@@ -61,6 +70,7 @@ export const useAuthStore = create<AuthState>()(
           accessToken: null,
           isAuthenticated: false,
           isLoading: false,
+          isInitialized: true,
         });
       },
     }),
@@ -70,9 +80,8 @@ export const useAuthStore = create<AuthState>()(
         user: state.user,
         accessToken: state.accessToken,
         isAuthenticated: state.isAuthenticated,
+        isInitialized: state.isInitialized,
       }),
     }
   )
 );
-
-useAuthStore.setState({ isLoading: false });
