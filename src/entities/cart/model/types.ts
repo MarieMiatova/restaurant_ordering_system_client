@@ -1,4 +1,6 @@
 export interface CartItem {
+  id: number;
+  user_id: number;
   menu_item_id: number;
   quantity: number;
   name?: string;
@@ -8,10 +10,12 @@ export interface CartItem {
 
 export interface CartState {
   items: CartItem[];
-  addItem: (item: Omit<CartItem, 'quantity'>) => void;
-  removeItem: (menu_item_id: number) => void;
-  updateQuantity: (menu_item_id: number, quantity: number) => void;
-  clearCart: () => void;
+  isLoading: boolean;
+  loadCart: () => Promise<void>;
+  addItem: (item: { menu_item_id: number; quantity?: number }) => Promise<void>;
+  removeItem: (itemId: number) => Promise<void>;
+  updateQuantity: (itemId: number, quantity: number) => Promise<void>;
+  clearCart: () => Promise<void>;
   getTotalItems: () => number;
   getTotalPrice: () => number;
   getItemsForOrder: () => { menu_item_id: number; quantity: number }[];

@@ -1,19 +1,17 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import type { User } from './types';
+import type { User, LoginCredentials, RegisterCredentials, TokenResponse } from './types';
 import { userApi } from '../api/user-api';
 
 interface AuthState {
   user: User | null;
   accessToken: string | null;
-  refreshToken: string | null;
   isAuthenticated: boolean;
   isLoading: boolean;
-  login: (credentials: { email: string; password: string }) => Promise<void>;
-  register: (credentials: { email: string; password: string; name?: string }) => Promise<void>;
-  logout: () => Promise<void>;
+  login: (credentials: LoginCredentials) => Promise<void>;
+  register: (credentials: RegisterCredentials) => Promise<void>;
+  logout: () => void;
   clearAuth: () => void;
-  setTokens: (accessToken: string, refreshToken: string) => void;
 }
 
 export const useAuthStore = create<AuthState>()(
@@ -21,7 +19,6 @@ export const useAuthStore = create<AuthState>()(
     (set, get) => ({
       user: null,
       accessToken: null,
-      refreshToken: null,
       isAuthenticated: false,
       isLoading: true,
 
@@ -29,9 +26,7 @@ export const useAuthStore = create<AuthState>()(
         try {
           const response = await userApi.login(credentials);
           set({
-            user: response.user,
             accessToken: response.access_token,
-            refreshToken: response.refresh_token,
             isAuthenticated: true,
             isLoading: false,
           });
@@ -43,11 +38,11 @@ export const useAuthStore = create<AuthState>()(
 
       register: async (credentials) => {
         try {
-          const response = await userApi.register(credentials);
+          await userApi.register(credentials);
+          // After registration, auto-login
+          const tokenResponse = await userApi.login(credentials as LoginCredentials);
           set({
-            user: response.user,
-            accessToken: response.access_token,
-            refreshToken: response.refresh_token,
+            accessToken: tokenResponse.access_token,
             isAuthenticated: true,
             isLoading: false,
           });
@@ -57,30 +52,16 @@ export const useAuthStore = create<AuthState>()(
         }
       },
 
-      logout: async () => {
-        try {
-          await userApi.logout();
-        } catch (error) {
-          console.error('Logout error:', error);
-        } finally {
-          get().clearAuth();
-        }
+      logout: () => {
+        get().clearAuth();
       },
 
       clearAuth: () => {
         set({
           user: null,
           accessToken: null,
-          refreshToken: null,
           isAuthenticated: false,
           isLoading: false,
-        });
-      },
-
-      setTokens: (accessToken: string, refreshToken: string) => {
-        set({
-          accessToken,
-          refreshToken,
         });
       },
     }),
@@ -89,7 +70,6 @@ export const useAuthStore = create<AuthState>()(
       partialize: (state) => ({
         user: state.user,
         accessToken: state.accessToken,
-        refreshToken: state.refreshToken,
         isAuthenticated: state.isAuthenticated,
       }),
     }

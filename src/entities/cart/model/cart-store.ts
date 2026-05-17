@@ -1,85 +1,109 @@
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
+import { cartApi } from '../api/cart-api';
 import type { CartItem } from './types';
 
 interface CartState {
   items: CartItem[];
-  addItem: (item: Omit<CartItem, 'quantity'>) => void;
-  removeItem: (menu_item_id: number) => void;
-  updateQuantity: (menu_item_id: number, quantity: number) => void;
-  clearCart: () => void;
+  isLoading: boolean;
+  loadCart: () => Promise<void>;
+  addItem: (item: { menu_item_id: number; quantity?: number }) => Promise<void>;
+  removeItem: (itemId: number) => Promise<void>;
+  updateQuantity: (itemId: number, quantity: number) => Promise<void>;
+  clearCart: () => Promise<void>;
   getTotalItems: () => number;
   getTotalPrice: () => number;
   getItemsForOrder: () => { menu_item_id: number; quantity: number }[];
 }
 
-export const useCartStore = create<CartState>()(
-  persist(
-    (set, get) => ({
-      items: [],
+export const useCartStore = create<CartState>((set, get) => ({
+  items: [],
+  isLoading: false,
 
-      addItem: (item) => {
-        set((state) => {
-          const existingIndex = state.items.findIndex(
-            (i) => i.menu_item_id === item.menu_item_id
-          );
-
-          if (existingIndex >= 0) {
-            const newItems = [...state.items];
-            newItems[existingIndex] = {
-              ...newItems[existingIndex],
-              quantity: newItems[existingIndex].quantity + 1,
-            };
-            return { items: newItems };
-          }
-
-          return { items: [...state.items, { ...item, quantity: 1 }] };
-        });
-      },
-
-      removeItem: (menu_item_id) => {
-        set((state) => ({
-          items: state.items.filter((i) => i.menu_item_id !== menu_item_id),
-        }));
-      },
-
-      updateQuantity: (menu_item_id, quantity) => {
-        if (quantity <= 0) {
-          get().removeItem(menu_item_id);
-          return;
-        }
-
-        set((state) => ({
-          items: state.items.map((i) =>
-            i.menu_item_id === menu_item_id ? { ...i, quantity } : i
-          ),
-        }));
-      },
-
-      clearCart: () => {
-        set({ items: [] });
-      },
-
-      getTotalItems: () => {
-        return get().items.reduce((sum, item) => sum + item.quantity, 0);
-      },
-
-      getTotalPrice: () => {
-        return get().items.reduce(
-          (sum, item) => sum + (item.price || 0) * item.quantity,
-          0
-        );
-      },
-
-      getItemsForOrder: () => {
-        return get().items.map((item) => ({
-          menu_item_id: item.menu_item_id,
-          quantity: item.quantity,
-        }));
-      },
-    }),
-    {
-      name: 'cart-storage',
+  loadCart: async () => {
+    set({ isLoading: true });
+    try {
+      const items = await cartApi.getCart();
+      set({ items, isLoading: false });
+    } catch (error) {
+      console.error('Failed to load cart:', error);
+      set({ isLoading: false, items: [] });
     }
-  )
-);
+  },
+
+  addItem: async (item) => {
+    try {
+      const quantity = item.quantity || 1;
+      const result = await cartApi.addToCart({ menu_item_id: item.menu_item_id, quantity });
+      set((state) => {
+        const existingIndex = state.items.findIndex(
+          (i) => i.id === result.id
+        );
+        if (existingIndex >= 0) {
+          const newItems = [...state.items];
+          newItems[existingIndex] = result;
+          return { items: newItems };
+        }
+        return { items: [...state.items, result] };
+      });
+    } catch (error) {
+      console.error('Failed to add item to cart:', error);
+      throw error;
+    }
+  },
+
+  removeItem: async (itemId) => {
+    try {
+      await cartApi.removeFromCart(itemId);
+      set((state) => ({
+        items: state.items.filter((i) => i.id !== itemId),
+      }));
+    } catch (error) {
+      console.error('Failed to remove item from cart:', error);
+      throw error;
+    }
+  },
+
+  updateQuantity: async (itemId, quantity) => {
+    if (quantity <= 0) {
+      await get().removeItem(itemId);
+      return;
+    }
+    try {
+      const result = await cartApi.updateCartItem(itemId, { quantity });
+      set((state) => ({
+        items: state.items.map((i) => (i.id === itemId ? result : i)),
+      }));
+    } catch (error) {
+      console.error('Failed to update cart item:', error);
+      throw error;
+    }
+  },
+
+  clearCart: async () => {
+    try {
+      await cartApi.clearCart();
+      set({ items: [] });
+    } catch (error) {
+      console.error('Failed to clear cart:', error);
+      throw error;
+    }
+  },
+
+  getTotalItems: () => {
+    return get().items.reduce((sum, item) => sum + item.quantity, 0);
+  },
+
+  getTotalPrice: () => {
+    return get().items.reduce(
+      (sum, item) => sum + (item.price || 0) * item.quantity,
+      0
+    );
+  },
+
+  getItemsForOrder: () => {
+    return get().items.map((item) => ({
+      menu_item_id: item.menu_item_id,
+      quantity: item.quantity,
+    }));
+  },
+}));

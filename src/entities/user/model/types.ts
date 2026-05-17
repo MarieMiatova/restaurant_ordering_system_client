@@ -1,27 +1,26 @@
 export interface User {
   id: number;
-  email: string;
-  name?: string;
+  username: string;
+  role?: string;
 }
 
 export interface LoginCredentials {
-  email: string;
+  username: string;
   password: string;
 }
 
 export interface RegisterCredentials {
-  email: string;
+  username: string;
   password: string;
-  name?: string;
+  role?: string;
 }
 
 export interface AuthResponse {
-  access_token: string;
-  refresh_token: string;
-  user: User;
+  message?: string;
+  username?: string;
 }
 
 export interface TokenResponse {
   access_token: string;
-  refresh_token: string;
+  token_type: string;
 }
