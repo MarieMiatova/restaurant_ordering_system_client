@@ -7,6 +7,7 @@ interface FavoriteState {
   isInitialized: boolean;
   loadFavorites: () => Promise<void>;
   toggleFavorite: (menuItemId: number) => Promise<boolean>; // returns true if added, false if removed
+  removeFavoriteFromState: (menuItemId: number) => void; // remove from state only (for direct delete)
   isFavorite: (menuItemId: number) => boolean;
   clearFavorites: () => void;
 }
@@ -59,6 +60,12 @@ export const useFavoriteStore = create<FavoriteState>((set, get) => ({
       }));
       throw error;
     }
+  },
+
+  removeFavoriteFromState: (menuItemId: number) => {
+    set((state) => ({
+      favorites: state.favorites.filter((id) => id !== menuItemId),
+    }));
   },
 
   isFavorite: (menuItemId: number) => {

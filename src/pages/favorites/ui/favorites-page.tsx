@@ -7,12 +7,17 @@ import type { MenuItem } from '@entities/menu-item/model/types';
 import { useCartStore } from '@entities/cart/model/cart-store';
 import { showToast } from '@shared/lib/toast';
 
+interface FavoriteItemWithDetails {
+  menu_item_id: number;
+  menuItem?: MenuItem;
+}
+
 export function FavoritesPage() {
   const navigate = useNavigate();
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
-  const { favorites, isLoading, toggleFavorite } = useFavoriteStore();
+  const { favorites, isLoading, removeFavoriteFromState } = useFavoriteStore();
   const addItem = useCartStore((state) => state.addItem);
-  const [favoriteItems, setFavoriteItems] = useState<MenuItem[]>([]);
+  const [favoriteItemsWithDetails, setFavoriteItemsWithDetails] = useState<FavoriteItemWithDetails[]>([]);
   const [isFetchingDetails, setIsFetchingDetails] = useState(false);
 
   useEffect(() => {
@@ -27,7 +32,7 @@ export function FavoritesPage() {
   useEffect(() => {
     const fetchFavoriteItems = async () => {
       if (favorites.length === 0) {
-        setFavoriteItems([]);
+        setFavoriteItemsWithDetails([]);
         return;
       }
 
@@ -36,14 +41,15 @@ export function FavoritesPage() {
         const items = await Promise.all(
           favorites.map(async (menuItemId) => {
             try {
-              return await menuItemApi.getMenuItemById(menuItemId);
+              const menuItem = await menuItemApi.getMenuItemById(menuItemId);
+              return { menu_item_id: menuItemId, menuItem };
             } catch (error) {
               console.error(`Failed to fetch menu item ${menuItemId}:`, error);
-              return null;
+              return { menu_item_id: menuItemId, menuItem: undefined };
             }
           })
         );
-        setFavoriteItems(items.filter((item): item is MenuItem => item !== null));
+        setFavoriteItemsWithDetails(items);
       } catch (error) {
         console.error('Failed to fetch favorite items:', error);
       } finally {
@@ -54,19 +60,15 @@ export function FavoritesPage() {
     fetchFavoriteItems();
   }, [favorites]);
 
-  const handleToggleFavorite = useCallback(async (menuItemId: number) => {
-    try {
-      await toggleFavorite(menuItemId);
-      showToast('Removed from favorites', 'success');
-    } catch (error) {
-      console.error('Failed to toggle favorite:', error);
-      showToast('Failed to update favorites', 'error');
-    }
-  }, [toggleFavorite]);
+  const handleRemoveFavorite = useCallback(async (menuItemId: number) => {
+    // Optimistic update - remove from state immediately without skeleton
+    removeFavoriteFromState(menuItemId);
+    showToast('Removed from favorites', 'success');
+  }, [removeFavoriteFromState]);
 
-  const handleAddToCart = useCallback(async (item: MenuItem) => {
+  const handleAddToCart = useCallback(async (item: FavoriteItemWithDetails) => {
     try {
-      await addItem({ menu_item_id: item.id, quantity: 1 });
+      await addItem({ menu_item_id: item.menu_item_id, quantity: 1 });
       showToast('Added to cart!', 'success');
     } catch (error) {
       console.error('Failed to add to cart:', error);
@@ -111,7 +113,7 @@ export function FavoritesPage() {
             </div>
           ))}
         </div>
-      ) : favoriteItems.length === 0 ? (
+      ) : favoriteItemsWithDetails.length === 0 ? (
         <div className="text-center py-16">
           <svg
             className="w-20 h-20 mx-auto text-gray-300 dark:text-gray-600 mb-4"
@@ -141,18 +143,18 @@ export function FavoritesPage() {
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-          {favoriteItems.map((item) => {
+          {favoriteItemsWithDetails.map((item) => {
             
             return (
               <div
-                key={item.id}
+                key={item.menu_item_id}
                 className="group bg-white dark:bg-gray-800 rounded-xl shadow-md hover:shadow-xl transition-all duration-300 overflow-hidden border border-gray-100 dark:border-gray-700"
               >
                 <div className="aspect-[4/3] bg-gray-100 dark:bg-gray-700 overflow-hidden relative">
-                  {item.image ? (
+                  {item.menuItem?.image ? (
                     <img
-                      src={item.image}
-                      alt={item.name}
+                      src={item.menuItem.image}
+                      alt={item.menuItem.name}
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                       onError={(e) => {
                         const target = e.target as HTMLImageElement;
@@ -169,7 +171,7 @@ export function FavoritesPage() {
                   
                   {/* Remove from favorites button */}
                   <button
-                    onClick={() => handleToggleFavorite(item.id)}
+                    onClick={() => handleRemoveFavorite(item.menu_item_id)}
                     className="absolute top-2 right-2 p-2 rounded-full bg-red-500 text-white hover:bg-red-600 transition-colors"
                     title="Remove from favorites"
                   >
@@ -181,23 +183,23 @@ export function FavoritesPage() {
                 
                 <div className="p-4">
                   <h3 className="font-semibold text-gray-900 dark:text-white text-lg line-clamp-1 mb-2">
-                    {item.name}
+                    {item.menuItem?.name || `Item #${item.menu_item_id}`}
                   </h3>
                   
-                  {item.description && (
+                  {item.menuItem?.description && (
                     <p className="text-gray-600 dark:text-gray-400 text-sm mb-3 line-clamp-2">
-                      {item.description}
+                      {item.menuItem.description}
                     </p>
                   )}
                   
                   <div className="flex items-center justify-between">
                     <span className="text-xl font-bold text-purple-600 dark:text-purple-400">
-                      ${item.price.toFixed(2)}
+                      ${item.menuItem?.price.toFixed(2) || '0.00'}
                     </span>
                     
-                    {item.categories.length > 0 && (
+                    {item.menuItem?.categories && item.menuItem.categories.length > 0 && (
                       <span className="text-xs text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded-full">
-                        {item.categories[0].name}
+                        {item.menuItem.categories[0].name}
                       </span>
                     )}
                   </div>

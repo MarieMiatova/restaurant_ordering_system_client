@@ -69,28 +69,75 @@ export function CartPage() {
   }, [items]);
 
   const handleRemoveItem = useCallback(async (itemId: number) => {
+    // Optimistic update - remove from state immediately without skeleton
+    const itemToRemove = items.find(i => i.id === itemId);
+    if (itemToRemove) {
+      setCartItemsWithDetails(prev => prev.filter(item => item.id !== itemId));
+    }
     try {
       await removeItem(itemId);
       showToast('Item removed from cart', 'success');
     } catch (error) {
       console.error('Failed to remove item:', error);
       showToast('Failed to remove item', 'error');
+      // Rollback on error
+      const fetchMenuItems = async () => {
+        if (items.length === 0) {
+          setCartItemsWithDetails([]);
+          return;
+        }
+        const itemsWithDetails = await Promise.all(
+          items.map(async (cartItem) => {
+            try {
+              const menuItem = await menuItemApi.getMenuItemById(cartItem.menu_item_id);
+              return { ...cartItem, menuItem };
+            } catch {
+              return { ...cartItem, menuItem: undefined };
+            }
+          })
+        );
+        setCartItemsWithDetails(itemsWithDetails);
+      };
+      fetchMenuItems();
     }
-  }, [removeItem]);
+  }, [removeItem, items]);
 
   const handleUpdateQuantity = useCallback(async (itemId: number, newQuantity: number) => {
     if (newQuantity <= 0) {
       await handleRemoveItem(itemId);
       return;
     }
+    // Optimistic update - update quantity in state immediately without skeleton
+    setCartItemsWithDetails(prev => prev.map(item => 
+      item.id === itemId ? { ...item, quantity: newQuantity } : item
+    ));
     try {
       await updateQuantity(itemId, newQuantity);
       showToast('Cart updated', 'success');
     } catch (error) {
       console.error('Failed to update quantity:', error);
       showToast('Failed to update quantity', 'error');
+      // Rollback on error
+      const fetchMenuItems = async () => {
+        if (items.length === 0) {
+          setCartItemsWithDetails([]);
+          return;
+        }
+        const itemsWithDetails = await Promise.all(
+          items.map(async (cartItem) => {
+            try {
+              const menuItem = await menuItemApi.getMenuItemById(cartItem.menu_item_id);
+              return { ...cartItem, menuItem };
+            } catch {
+              return { ...cartItem, menuItem: undefined };
+            }
+          })
+        );
+        setCartItemsWithDetails(itemsWithDetails);
+      };
+      fetchMenuItems();
     }
-  }, [updateQuantity, handleRemoveItem]);
+  }, [updateQuantity, handleRemoveItem, items]);
 
   const handleClearCart = useCallback(async () => {
     if (!window.confirm('Are you sure you want to clear your cart?')) {

@@ -7,3 +7,7 @@ export interface Favorite {
 export interface FavoriteCreate {
   menu_item_id: number;
 }
+
+export interface FavoriteItem extends Favorite {
+  menuItem?: import('@entities/menu-item/model/types').MenuItem;
+}
