@@ -4,7 +4,7 @@ import { useAuthStore } from '@entities/user/model/auth-store';
 
 export function LoginPage() {
   const [isLoginMode, setIsLoginMode] = useState(true);
-  const [email, setEmail] = useState('');
+  const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
   const [error, setError] = useState('');
@@ -21,9 +21,9 @@ export function LoginPage() {
 
     try {
       if (isLoginMode) {
-        await login({ email, password });
+        await login({ username, password });
       } else {
-        await register({ email, password, name });
+        await register({ username: name || username, password, role: 'user' });
       }
       navigate('/catalog');
     } catch (err: unknown) {
@@ -74,17 +74,17 @@ export function LoginPage() {
             )}
 
             <div>
-              <label htmlFor="email" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Email
+              <label htmlFor="username" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Username
               </label>
               <input
-                id="email"
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                id="username"
+                type="text"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
                 required
                 className="w-full px-4 py-3 rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
-                placeholder="you@example.com"
+                placeholder="your_username"
               />
             </div>
 

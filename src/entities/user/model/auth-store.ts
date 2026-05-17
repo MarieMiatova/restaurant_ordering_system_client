@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import type { User, LoginCredentials, RegisterCredentials, TokenResponse } from './types';
+import type { User, LoginCredentials, RegisterCredentials } from './types';
 import { userApi } from '../api/user-api';
 
 interface AuthState {
@@ -39,7 +39,6 @@ export const useAuthStore = create<AuthState>()(
       register: async (credentials) => {
         try {
           await userApi.register(credentials);
-          // After registration, auto-login
           const tokenResponse = await userApi.login(credentials as LoginCredentials);
           set({
             accessToken: tokenResponse.access_token,
@@ -76,5 +75,4 @@ export const useAuthStore = create<AuthState>()(
   )
 );
 
-// Initialize loading state on mount
 useAuthStore.setState({ isLoading: false });

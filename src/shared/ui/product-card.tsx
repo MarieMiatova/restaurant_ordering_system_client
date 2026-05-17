@@ -28,9 +28,7 @@ export function ProductCard({ item, onClick }: ProductCardProps) {
     
     addItem({
       menu_item_id: item.id,
-      name: item.name,
-      price: item.price,
-      image: item.image,
+      quantity: 1,
     });
     
     showToast('Added to cart!', 'success');
