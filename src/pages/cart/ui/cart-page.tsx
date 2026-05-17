@@ -18,7 +18,7 @@ export function CartPage() {
   const navigate = useNavigate();
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
   const accessToken = useAuthStore((state) => state.accessToken);
-  const { items, isLoading, removeItem, updateQuantity, clearCart, getTotalItems } = useCartStore();
+  const { items, isLoading, removeItem, updateQuantity, clearCart, clearCartStateOnly, getTotalItems } = useCartStore();
   const [cartItemsWithDetails, setCartItemsWithDetails] = useState<CartItemWithDetails[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
   const [isFetchingDetails, setIsFetchingDetails] = useState(false);
@@ -192,7 +192,8 @@ export function CartPage() {
         throw new Error(errorMessage);
       }
 
-      await clearCart();
+      // Clear cart state only (backend clears automatically after checkout)
+      clearCartStateOnly();
       setCustomerName('');
       setPhone('');
       setAddress('');
@@ -205,7 +206,7 @@ export function CartPage() {
     } finally {
       setIsProcessing(false);
     }
-  }, [customerName, phone, address, items.length, accessToken, clearCart, navigate]);
+  }, [customerName, phone, address, items.length, accessToken, clearCartStateOnly, navigate]);
 
   const calculatedTotal = useMemo(() => {
     return cartItemsWithDetails.reduce((sum, item) => {

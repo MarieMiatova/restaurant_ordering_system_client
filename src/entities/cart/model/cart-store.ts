@@ -11,6 +11,7 @@ interface CartState {
   removeItem: (itemId: number) => Promise<void>;
   updateQuantity: (itemId: number, quantity: number) => Promise<void>;
   clearCart: () => Promise<void>;
+  clearCartStateOnly: () => void;
   getTotalItems: () => number;
   getTotalPrice: () => number;
   getItemsForOrder: () => { menu_item_id: number; quantity: number }[];
@@ -89,6 +90,11 @@ export const useCartStore = create<CartState>((set, get) => ({
       console.error('Failed to clear cart:', error);
       throw error;
     }
+  },
+
+  clearCartStateOnly: () => {
+    // Clear cart state only without API call (used after successful checkout)
+    set({ items: [] });
   },
 
   getTotalItems: () => {
